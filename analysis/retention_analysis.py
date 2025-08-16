@@ -1,21 +1,8 @@
-"""
-E-commerce Customer Retention Analysis
-=====================================
-
-This script analyzes quarterly customer retention data for 2024 
-and generates visualizations comparing performance against industry benchmarks.
-
-Author: 23f3003731@ds.study.iitm.ac.in
-Date: August 2025
-"""
-
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import plotly.graph_objects as go
-import plotly.express as px
-from plotly.subplots import make_subplots
+import numpy as np
+from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -23,405 +10,262 @@ warnings.filterwarnings('ignore')
 plt.style.use('seaborn-v0_8')
 sns.set_palette("husl")
 
-class RetentionAnalyzer:
+def load_and_analyze_data():
+    """Load retention data and perform comprehensive analysis"""
+    
+    # Load the data
+    df = pd.read_csv('data/retention_data.csv')
+    
+    # Basic statistics
+    print("=== CUSTOMER RETENTION ANALYSIS ===")
+    print(f"Dataset shape: {df.shape}")
+    print(f"\nQuarterly Retention Rates:")
+    for _, row in df.iterrows():
+        print(f"{row['Quarter']}: {row['Retention_Rate']:.2f}%")
+    
+    # Calculate key metrics
+    average_retention = df['Retention_Rate'].mean()
+    industry_target = 85.0
+    gap_to_target = industry_target - average_retention
+    
+    print(f"\nKey Metrics:")
+    print(f"Average Retention Rate: {average_retention:.2f}%")
+    print(f"Industry Target: {industry_target:.2f}%")
+    print(f"Gap to Target: {gap_to_target:.2f} percentage points")
+    
+    # Trend analysis
+    retention_trend = df['Retention_Rate'].pct_change().fillna(0) * 100
+    print(f"\nTrend Analysis:")
+    for i, (_, row) in enumerate(df.iterrows()):
+        if i > 0:
+            change = retention_trend.iloc[i]
+            direction = "↑" if change > 0 else "↓" if change < 0 else "→"
+            print(f"{row['Quarter']}: {change:+.2f}% {direction}")
+    
+    return df, average_retention, industry_target, gap_to_target
+
+def create_visualizations(df, average_retention, industry_target):
+    """Create comprehensive visualizations for the analysis"""
+    
+    # 1. Quarterly Performance Line Chart
+    plt.figure(figsize=(12, 8))
+    plt.plot(df['Quarter'], df['Retention_Rate'], 
+             marker='o', linewidth=3, markersize=8, 
+             color='#2E8B57', label='Actual Retention Rate')
+    plt.axhline(y=average_retention, color='#FF6B6B', 
+                linestyle='--', linewidth=2, label=f'Average ({average_retention:.2f}%)')
+    plt.axhline(y=industry_target, color='#4ECDC4', 
+                linestyle='-', linewidth=2, label=f'Industry Target ({industry_target}%)')
+    
+    plt.title('Customer Retention Rate - 2024 Quarterly Performance', 
+              fontsize=16, fontweight='bold', pad=20)
+    plt.xlabel('Quarter', fontsize=12, fontweight='bold')
+    plt.ylabel('Retention Rate (%)', fontsize=12, fontweight='bold')
+    plt.legend(fontsize=11)
+    plt.grid(True, alpha=0.3)
+    plt.ylim(65, 90)
+    
+    # Add value labels on data points
+    for i, row in df.iterrows():
+        plt.annotate(f'{row["Retention_Rate"]:.2f}%', 
+                    (row['Quarter'], row['Retention_Rate']),
+                    textcoords="offset points", xytext=(0,10), ha='center',
+                    fontweight='bold')
+    
+    plt.tight_layout()
+    plt.savefig('visualizations/quarterly_performance.png', dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # 2. Benchmark Comparison Bar Chart
+    plt.figure(figsize=(10, 6))
+    categories = ['Current Average', 'Industry Target']
+    values = [average_retention, industry_target]
+    colors = ['#FF6B6B', '#4ECDC4']
+    
+    bars = plt.bar(categories, values, color=colors, alpha=0.8, width=0.6)
+    plt.title('Retention Rate: Current vs Industry Benchmark', 
+              fontsize=16, fontweight='bold', pad=20)
+    plt.ylabel('Retention Rate (%)', fontsize=12, fontweight='bold')
+    plt.ylim(60, 90)
+    
+    # Add value labels on bars
+    for bar, value in zip(bars, values):
+        plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 1, 
+                f'{value:.2f}%', ha='center', va='bottom', fontweight='bold')
+    
+    # Add gap annotation
+    plt.annotate(f'Gap: {industry_target - average_retention:.2f}pp', 
+                xy=(0.5, (average_retention + industry_target)/2), 
+                xytext=(0.5, (average_retention + industry_target)/2 + 3),
+                ha='center', fontweight='bold', color='red',
+                arrowprops=dict(arrowstyle='<->', color='red', lw=2))
+    
+    plt.tight_layout()
+    plt.savefig('visualizations/benchmark_comparison.png', dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # 3. Retention Trend with Annotations
+    plt.figure(figsize=(14, 8))
+    plt.plot(df['Quarter'], df['Retention_Rate'], 
+             marker='s', linewidth=4, markersize=10, 
+             color='#2E8B57', markerfacecolor='white', 
+             markeredgewidth=2, markeredgecolor='#2E8B57')
+    
+    plt.fill_between(df['Quarter'], df['Retention_Rate'], 
+                     alpha=0.3, color='#2E8B57')
+    
+    plt.axhline(y=industry_target, color='#4ECDC4', 
+                linestyle='-', linewidth=3, alpha=0.7, 
+                label=f'Industry Target ({industry_target}%)')
+    
+    plt.title('Customer Retention Trend Analysis - 2024', 
+              fontsize=18, fontweight='bold', pad=25)
+    plt.xlabel('Quarter', fontsize=14, fontweight='bold')
+    plt.ylabel('Retention Rate (%)', fontsize=14, fontweight='bold')
+    plt.legend(fontsize=12)
+    plt.grid(True, alpha=0.3)
+    plt.ylim(65, 90)
+    
+    # Add detailed annotations
+    annotations = [
+        (0, "Q1: Starting point\n71.68%"),
+        (1, "Q2: Slight improvement\n+0.39pp"),
+        (2, "Q3: Significant drop\n-2.40pp"),
+        (3, "Q4: Recovery attempt\n+2.24pp")
+    ]
+    
+    for i, (idx, text) in enumerate(annotations):
+        plt.annotate(text, (df.iloc[idx]['Quarter'], df.iloc[idx]['Retention_Rate']),
+                    xytext=(20, 20 if i % 2 == 0 else -30), 
+                    textcoords='offset points',
+                    bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.7),
+                    arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
+    
+    plt.tight_layout()
+    plt.savefig('visualizations/retention_trend.png', dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # 4. Dashboard-style Summary
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
+    
+    # Quarterly bars
+    ax1.bar(df['Quarter'], df['Retention_Rate'], color='#2E8B57', alpha=0.8)
+    ax1.axhline(y=industry_target, color='red', linestyle='--', linewidth=2)
+    ax1.set_title('Quarterly Performance', fontweight='bold')
+    ax1.set_ylabel('Retention Rate (%)')
+    
+    # Gap analysis
+    gap_data = [industry_target - rate for rate in df['Retention_Rate']]
+    ax2.bar(df['Quarter'], gap_data, color='#FF6B6B', alpha=0.8)
+    ax2.set_title('Gap to Industry Target', fontweight='bold')
+    ax2.set_ylabel('Gap (percentage points)')
+    
+    # Trend line
+    ax3.plot(df['Quarter'], df['Retention_Rate'], marker='o', linewidth=3, markersize=8)
+    ax3.fill_between(df['Quarter'], df['Retention_Rate'], alpha=0.3)
+    ax3.set_title('Retention Trend', fontweight='bold')
+    ax3.set_ylabel('Retention Rate (%)')
+    
+    # Summary stats
+    ax4.axis('off')
+    summary_text = f"""
+    KEY METRICS SUMMARY
+    
+    Average Retention: {average_retention:.2f}%
+    Industry Target: {industry_target:.2f}%
+    Gap to Target: {industry_target - average_retention:.2f}pp
+    
+    Volatility: {df['Retention_Rate'].std():.2f}%
+    Best Quarter: {df.loc[df['Retention_Rate'].idxmax(), 'Quarter']} ({df['Retention_Rate'].max():.2f}%)
+    Worst Quarter: {df.loc[df['Retention_Rate'].idxmin(), 'Quarter']} ({df['Retention_Rate'].min():.2f}%)
+    
+    URGENT ACTION REQUIRED
     """
-    A class to analyze customer retention data and generate insights
-    """
+    ax4.text(0.1, 0.9, summary_text, transform=ax4.transAxes, fontsize=12,
+             verticalalignment='top', bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.5))
     
-    def __init__(self):
-        """Initialize the analyzer with 2024 quarterly retention data"""
-        # Quarterly retention data for 2024
-        self.data = {
-            'Quarter': ['Q1 2024', 'Q2 2024', 'Q3 2024', 'Q4 2024'],
-            'Retention_Rate': [71.68, 72.07, 69.67, 71.91],
-            'Month': [1, 2, 3, 4]  # For trend analysis
+    plt.suptitle('Customer Retention Dashboard - 2024 Analysis', 
+                 fontsize=16, fontweight='bold', y=0.98)
+    plt.tight_layout()
+    plt.savefig('visualizations/dashboard.png', dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print("✓ All visualizations created successfully!")
+
+def generate_insights(df, average_retention, industry_target, gap_to_target):
+    """Generate actionable insights from the analysis"""
+    
+    print("\n=== ACTIONABLE INSIGHTS ===")
+    
+    # Performance insights
+    best_quarter = df.loc[df['Retention_Rate'].idxmax()]
+    worst_quarter = df.loc[df['Retention_Rate'].idxmin()]
+    volatility = df['Retention_Rate'].std()
+    
+    insights = {
+        'performance': {
+            'average': average_retention,
+            'target': industry_target,
+            'gap': gap_to_target,
+            'best_quarter': best_quarter,
+            'worst_quarter': worst_quarter,
+            'volatility': volatility
+        },
+        'trends': {
+            'q1_to_q2': df.iloc[1]['Retention_Rate'] - df.iloc[0]['Retention_Rate'],
+            'q2_to_q3': df.iloc[2]['Retention_Rate'] - df.iloc[1]['Retention_Rate'],
+            'q3_to_q4': df.iloc[3]['Retention_Rate'] - df.iloc[2]['Retention_Rate'],
         }
-        
-        # Industry benchmark and targets
-        self.industry_target = 85.0
-        self.df = pd.DataFrame(self.data)
-        
-        # Calculate key metrics
-        self.avg_retention = np.mean(self.data['Retention_Rate'])
-        self.performance_gap = self.industry_target - self.avg_retention
-        
-        print(f"=== E-commerce Retention Analysis Initialized ===")
-        print(f"Average Retention Rate: {self.avg_retention:.2f}%")
-        print(f"Industry Target: {self.industry_target}%")
-        print(f"Performance Gap: {self.performance_gap:.2f} percentage points")
-        print("=" * 50)
+    }
     
-    def calculate_statistics(self):
-        """Calculate comprehensive statistics for the retention data"""
-        stats = {
-            'mean': np.mean(self.data['Retention_Rate']),
-            'median': np.median(self.data['Retention_Rate']),
-            'std': np.std(self.data['Retention_Rate']),
-            'min': np.min(self.data['Retention_Rate']),
-            'max': np.max(self.data['Retention_Rate']),
-            'range': np.max(self.data['Retention_Rate']) - np.min(self.data['Retention_Rate']),
-            'cv': (np.std(self.data['Retention_Rate']) / np.mean(self.data['Retention_Rate'])) * 100
-        }
-        
-        print("\n=== Statistical Summary ===")
-        print(f"Mean Retention Rate: {stats['mean']:.2f}%")
-        print(f"Median Retention Rate: {stats['median']:.2f}%")
-        print(f"Standard Deviation: {stats['std']:.2f}%")
-        print(f"Range: {stats['range']:.2f}% (Min: {stats['min']:.2f}%, Max: {stats['max']:.2f}%)")
-        print(f"Coefficient of Variation: {stats['cv']:.2f}%")
-        
-        return stats
+    print(f"1. PERFORMANCE GAP: {gap_to_target:.2f} percentage points below industry standard")
+    print(f"2. VOLATILITY: High variance ({volatility:.2f}%) indicates unstable retention")
+    print(f"3. Q3 CRISIS: Significant {insights['trends']['q2_to_q3']:.2f}pp drop needs investigation")
+    print(f"4. RECOVERY SIGNAL: Q4 showed {insights['trends']['q3_to_q4']:+.2f}pp improvement")
     
-    def create_trend_visualization(self, save_path='visualizations/retention_trend.png'):
-        """Create a comprehensive trend visualization"""
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
-        
-        # Plot 1: Quarterly Trend with Benchmark
-        quarters = self.df['Quarter']
-        retention_rates = self.df['Retention_Rate']
-        
-        # Line plot for trend
-        ax1.plot(quarters, retention_rates, marker='o', linewidth=3, markersize=8, 
-                color='#e74c3c', label='Actual Retention Rate')
-        
-        # Industry benchmark line
-        ax1.axhline(y=self.industry_target, color='#27ae60', linestyle='--', 
-                   linewidth=2, label=f'Industry Target ({self.industry_target}%)')
-        
-        # Average line
-        ax1.axhline(y=self.avg_retention, color='#f39c12', linestyle=':', 
-                   linewidth=2, label=f'Our Average ({self.avg_retention:.2f}%)')
-        
-        # Formatting
-        ax1.set_title('Customer Retention Rate - 2024 Quarterly Performance', 
-                     fontsize=16, fontweight='bold', pad=20)
-        ax1.set_ylabel('Retention Rate (%)', fontsize=12)
-        ax1.set_ylim(65, 90)
-        ax1.grid(True, alpha=0.3)
-        ax1.legend(fontsize=10)
-        
-        # Add value labels on points
-        for i, (quarter, rate) in enumerate(zip(quarters, retention_rates)):
-            ax1.annotate(f'{rate:.2f}%', (i, rate), textcoords="offset points", 
-                        xytext=(0,10), ha='center', fontweight='bold')
-        
-        # Plot 2: Gap Analysis
-        gaps = [self.industry_target - rate for rate in retention_rates]
-        colors = ['#e74c3c' if gap > 0 else '#27ae60' for gap in gaps]
-        
-        bars = ax2.bar(quarters, gaps, color=colors, alpha=0.7, edgecolor='black')
-        ax2.set_title('Performance Gap vs Industry Target', fontsize=16, fontweight='bold', pad=20)
-        ax2.set_ylabel('Gap (Percentage Points)', fontsize=12)
-        ax2.axhline(y=0, color='black', linestyle='-', linewidth=1)
-        ax2.grid(True, alpha=0.3)
-        
-        # Add value labels on bars
-        for bar, gap in zip(bars, gaps):
-            height = bar.get_height()
-            ax2.annotate(f'{gap:.2f}pp', xy=(bar.get_x() + bar.get_width()/2, height),
-                        xytext=(0, 3 if height > 0 else -15), textcoords="offset points",
-                        ha='center', va='bottom' if height > 0 else 'top', fontweight='bold')
-        
-        plt.tight_layout()
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        plt.show()
-        print(f"Trend visualization saved to: {save_path}")
+    return insights
+
+def calculate_business_impact(average_retention, industry_target):
+    """Calculate the business impact of retention gap"""
     
-    def create_performance_dashboard(self, save_path='visualizations/dashboard.png'):
-        """Create a comprehensive performance dashboard"""
-        fig = plt.figure(figsize=(16, 12))
-        gs = fig.add_gridspec(3, 3, hspace=0.3, wspace=0.3)
-        
-        # 1. Main trend chart
-        ax1 = fig.add_subplot(gs[0, :2])
-        quarters = self.df['Quarter']
-        retention_rates = self.df['Retention_Rate']
-        
-        ax1.plot(quarters, retention_rates, marker='o', linewidth=4, markersize=10, 
-                color='#3498db', label='Actual Performance')
-        ax1.axhline(y=self.industry_target, color='#27ae60', linestyle='--', 
-                   linewidth=3, label=f'Target ({self.industry_target}%)')
-        ax1.fill_between(quarters, retention_rates, alpha=0.3, color='#3498db')
-        ax1.set_title('2024 Retention Performance Trend', fontsize=14, fontweight='bold')
-        ax1.set_ylabel('Retention Rate (%)')
-        ax1.legend()
-        ax1.grid(True, alpha=0.3)
-        
-        # 2. Key metrics summary
-        ax2 = fig.add_subplot(gs[0, 2])
-        ax2.axis('off')
-        metrics_text = f"""
-        KEY METRICS
-        
-        Average: {self.avg_retention:.2f}%
-        Target: {self.industry_target}%
-        Gap: {self.performance_gap:.2f}pp
-        
-        Best Quarter: Q2 ({max(retention_rates):.2f}%)
-        Worst Quarter: Q3 ({min(retention_rates):.2f}%)
-        Volatility: {np.std(retention_rates):.2f}%
-        """
-        ax2.text(0.1, 0.9, metrics_text, transform=ax2.transAxes, fontsize=11,
-                verticalalignment='top', bbox=dict(boxstyle="round,pad=0.3", facecolor="lightblue"))
-        
-        # 3. Quarter-over-Quarter change
-        ax3 = fig.add_subplot(gs[1, 0])
-        qoq_changes = [0] + [retention_rates[i] - retention_rates[i-1] for i in range(1, len(retention_rates))]
-        colors = ['green' if x >= 0 else 'red' for x in qoq_changes]
-        ax3.bar(quarters, qoq_changes, color=colors, alpha=0.7)
-        ax3.set_title('Quarter-over-Quarter Changes', fontsize=12, fontweight='bold')
-        ax3.set_ylabel('Change (%)')
-        ax3.axhline(y=0, color='black', linestyle='-', linewidth=1)
-        ax3.tick_params(axis='x', rotation=45)
-        
-        # 4. Performance vs Target comparison
-        ax4 = fig.add_subplot(gs[1, 1])
-        x_pos = np.arange(len(quarters))
-        width = 0.35
-        ax4.bar(x_pos - width/2, retention_rates, width, label='Actual', color='#e74c3c', alpha=0.8)
-        ax4.bar(x_pos + width/2, [self.industry_target]*len(quarters), width, 
-               label='Target', color='#27ae60', alpha=0.8)
-        ax4.set_title('Actual vs Target Comparison', fontsize=12, fontweight='bold')
-        ax4.set_ylabel('Retention Rate (%)')
-        ax4.set_xticks(x_pos)
-        ax4.set_xticklabels(quarters, rotation=45)
-        ax4.legend()
-        
-        # 5. Cumulative gap analysis
-        ax5 = fig.add_subplot(gs[1, 2])
-        cumulative_gap = np.cumsum([self.industry_target - rate for rate in retention_rates])
-        ax5.plot(quarters, cumulative_gap, marker='s', linewidth=3, markersize=8, color='#e67e22')
-        ax5.fill_between(quarters, cumulative_gap, alpha=0.3, color='#e67e22')
-        ax5.set_title('Cumulative Performance Gap', fontsize=12, fontweight='bold')
-        ax5.set_ylabel('Cumulative Gap (pp)')
-        ax5.tick_params(axis='x', rotation=45)
-        ax5.grid(True, alpha=0.3)
-        
-        # 6. Distribution analysis
-        ax6 = fig.add_subplot(gs[2, :])
-        # Create a histogram showing retention rate distribution
-        ax6.hist(retention_rates, bins=8, color='skyblue', alpha=0.7, edgecolor='black')
-        ax6.axvline(self.avg_retention, color='red', linestyle='--', linewidth=2, 
-                   label=f'Our Average ({self.avg_retention:.2f}%)')
-        ax6.axvline(self.industry_target, color='green', linestyle='--', linewidth=2, 
-                   label=f'Industry Target ({self.industry_target}%)')
-        ax6.set_title('Retention Rate Distribution Analysis', fontsize=12, fontweight='bold')
-        ax6.set_xlabel('Retention Rate (%)')
-        ax6.set_ylabel('Frequency')
-        ax6.legend()
-        
-        plt.suptitle('E-commerce Customer Retention Performance Dashboard - 2024', 
-                    fontsize=18, fontweight='bold', y=0.98)
-        
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        plt.show()
-        print(f"Performance dashboard saved to: {save_path}")
+    print("\n=== BUSINESS IMPACT ANALYSIS ===")
     
-    def create_interactive_plotly_chart(self, save_path='visualizations/interactive_retention.html'):
-        """Create an interactive Plotly visualization"""
-        fig = make_subplots(
-            rows=2, cols=2,
-            subplot_titles=('Quarterly Trend', 'Performance Gap', 'Cumulative Analysis', 'Target Achievement'),
-            specs=[[{"secondary_y": False}, {"secondary_y": False}],
-                   [{"secondary_y": False}, {"secondary_y": False}]]
-        )
-        
-        quarters = self.df['Quarter']
-        retention_rates = self.df['Retention_Rate']
-        
-        # 1. Quarterly Trend
-        fig.add_trace(
-            go.Scatter(x=quarters, y=retention_rates, mode='lines+markers',
-                      name='Actual Retention', line=dict(color='#e74c3c', width=3),
-                      marker=dict(size=10)),
-            row=1, col=1
-        )
-        fig.add_trace(
-            go.Scatter(x=quarters, y=[self.industry_target]*len(quarters),
-                      mode='lines', name='Industry Target', 
-                      line=dict(color='#27ae60', width=2, dash='dash')),
-            row=1, col=1
-        )
-        
-        # 2. Performance Gap
-        gaps = [self.industry_target - rate for rate in retention_rates]
-        colors = ['red' if gap > 0 else 'green' for gap in gaps]
-        fig.add_trace(
-            go.Bar(x=quarters, y=gaps, name='Performance Gap',
-                  marker_color=colors, opacity=0.7),
-            row=1, col=2
-        )
-        
-        # 3. Cumulative Analysis
-        cumulative_retention = np.cumsum(retention_rates)
-        cumulative_target = np.cumsum([self.industry_target]*len(quarters))
-        fig.add_trace(
-            go.Scatter(x=quarters, y=cumulative_retention, mode='lines+markers',
-                      name='Cumulative Actual', line=dict(color='#3498db', width=3)),
-            row=2, col=1
-        )
-        fig.add_trace(
-            go.Scatter(x=quarters, y=cumulative_target, mode='lines',
-                      name='Cumulative Target', line=dict(color='#27ae60', width=2, dash='dot')),
-            row=2, col=1
-        )
-        
-        # 4. Target Achievement Percentage
-        achievement_pct = [(rate/self.industry_target)*100 for rate in retention_rates]
-        fig.add_trace(
-            go.Bar(x=quarters, y=achievement_pct, name='Target Achievement %',
-                  marker_color='lightblue', opacity=0.8),
-            row=2, col=2
-        )
-        fig.add_hline(y=100, line_dash="dash", line_color="green", row=2, col=2)
-        
-        # Update layout
-        fig.update_layout(
-            title_text="Interactive E-commerce Retention Analysis Dashboard",
-            title_x=0.5,
-            showlegend=True,
-            height=800,
-            template="plotly_white"
-        )
-        
-        # Save and show
-        fig.write_html(save_path)
-        fig.show()
-        print(f"Interactive chart saved to: {save_path}")
+    # Assumptions for impact calculation
+    avg_customer_value = 500  # Annual customer value
+    total_customers = 10000   # Customer base
     
-    def generate_insights_report(self):
-        """Generate detailed insights and recommendations"""
-        stats = self.calculate_statistics()
-        
-        print("\n" + "="*60)
-        print("AUTOMATED INSIGHTS REPORT")
-        print("="*60)
-        
-        # Key findings
-        print(f"\n📊 PERFORMANCE ANALYSIS:")
-        print(f"   • Current average retention: {self.avg_retention:.2f}%")
-        print(f"   • Industry benchmark: {self.industry_target}%")
-        print(f"   • Performance gap: {self.performance_gap:.2f} percentage points")
-        print(f"   • Quarterly volatility: {stats['std']:.2f}% (CV: {stats['cv']:.1f}%)")
-        
-        # Quarter analysis
-        best_q = self.df.loc[self.df['Retention_Rate'].idxmax(), 'Quarter']
-        worst_q = self.df.loc[self.df['Retention_Rate'].idxmin(), 'Quarter']
-        best_rate = self.df['Retention_Rate'].max()
-        worst_rate = self.df['Retention_Rate'].min()
-        
-        print(f"\n📈 QUARTERLY INSIGHTS:")
-        print(f"   • Best performing quarter: {best_q} ({best_rate:.2f}%)")
-        print(f"   • Worst performing quarter: {worst_q} ({worst_rate:.2f}%)")
-        print(f"   • Range of performance: {best_rate - worst_rate:.2f} percentage points")
-        
-        # Trend analysis
-        q_over_q = [self.df['Retention_Rate'].iloc[i] - self.df['Retention_Rate'].iloc[i-1] 
-                   for i in range(1, len(self.df))]
-        
-        print(f"\n📉 TREND ANALYSIS:")
-        print(f"   • Q1→Q2 change: {q_over_q[0]:+.2f}%")
-        print(f"   • Q2→Q3 change: {q_over_q[1]:+.2f}%")
-        print(f"   • Q3→Q4 change: {q_over_q[2]:+.2f}%")
-        
-        # Risk assessment
-        print(f"\n⚠️  RISK ASSESSMENT:")
-        if stats['cv'] > 2:
-            print(f"   • HIGH volatility detected (CV: {stats['cv']:.1f}%)")
-        else:
-            print(f"   • Moderate volatility (CV: {stats['cv']:.1f}%)")
-            
-        if self.performance_gap > 10:
-            print(f"   • CRITICAL performance gap: {self.performance_gap:.1f}pp below target")
-        elif self.performance_gap > 5:
-            print(f"   • Significant performance gap: {self.performance_gap:.1f}pp below target")
-        
-        # Recommendations
-        print(f"\n🎯 STRATEGIC RECOMMENDATIONS:")
-        print(f"   • Immediate target: Achieve 75% retention (+{75 - self.avg_retention:.1f}pp)")
-        print(f"   • 6-month target: Achieve 80% retention (+{80 - self.avg_retention:.1f}pp)")
-        print(f"   • 12-month target: Achieve 85% industry benchmark (+{self.performance_gap:.1f}pp)")
-        print(f"   • Focus area: Address Q3 seasonal decline (-{q_over_q[1]:.1f}pp)")
-        
-        return {
-            'avg_retention': self.avg_retention,
-            'performance_gap': self.performance_gap,
-            'volatility': stats['cv'],
-            'best_quarter': best_q,
-            'worst_quarter': worst_q,
-            'recommendations': [
-                'Implement targeted retention campaigns',
-                'Address Q3 seasonal vulnerabilities',
-                'Establish predictive analytics for early intervention',
-                'Launch customer loyalty program enhancements'
-            ]
-        }
+    current_retained = total_customers * (average_retention / 100)
+    target_retained = total_customers * (industry_target / 100)
+    lost_revenue = (target_retained - current_retained) * avg_customer_value
     
-    def export_data_analysis(self, filename='retention_analysis_results.xlsx'):
-        """Export analysis results to Excel file"""
-        with pd.ExcelWriter(filename, engine='openpyxl') as writer:
-            # Raw data
-            self.df.to_excel(writer, sheet_name='Raw_Data', index=False)
-            
-            # Summary statistics
-            stats_df = pd.DataFrame({
-                'Metric': ['Average Retention Rate', 'Industry Target', 'Performance Gap', 
-                          'Standard Deviation', 'Min Rate', 'Max Rate', 'Coefficient of Variation'],
-                'Value': [f"{self.avg_retention:.2f}%", f"{self.industry_target:.2f}%", 
-                         f"{self.performance_gap:.2f}pp", f"{np.std(self.data['Retention_Rate']):.2f}%",
-                         f"{np.min(self.data['Retention_Rate']):.2f}%", f"{np.max(self.data['Retention_Rate']):.2f}%",
-                         f"{(np.std(self.data['Retention_Rate']) / self.avg_retention) * 100:.2f}%"]
-            })
-            stats_df.to_excel(writer, sheet_name='Summary_Statistics', index=False)
-            
-            # Gap analysis
-            gap_df = pd.DataFrame({
-                'Quarter': self.df['Quarter'],
-                'Actual_Rate': self.df['Retention_Rate'],
-                'Target_Rate': self.industry_target,
-                'Gap': [self.industry_target - rate for rate in self.df['Retention_Rate']],
-                'Achievement_Percentage': [(rate/self.industry_target)*100 for rate in self.df['Retention_Rate']]
-            })
-            gap_df.to_excel(writer, sheet_name='Gap_Analysis', index=False)
-        
-        print(f"Analysis results exported to: {filename}")
+    print(f"Annual Revenue Impact:")
+    print(f"• Current retained customers: {current_retained:,.0f}")
+    print(f"• Target retained customers: {target_retained:,.0f}")
+    print(f"• Lost customers: {target_retained - current_retained:,.0f}")
+    print(f"• Lost annual revenue: ${lost_revenue:,.0f}")
+    
+    return lost_revenue
 
 def main():
-    """Main function to run the complete retention analysis"""
-    print("Starting E-commerce Customer Retention Analysis...")
-    print("Analyst: 23f3003731@ds.study.iitm.ac.in\n")
+    """Main analysis pipeline"""
+    print("Starting Customer Retention Analysis...")
+    print("=" * 50)
     
-    # Initialize analyzer
-    analyzer = RetentionAnalyzer()
+    # Load and analyze data
+    df, average_retention, industry_target, gap_to_target = load_and_analyze_data()
     
-    # Run statistical analysis
-    stats = analyzer.calculate_statistics()
+    # Create visualizations
+    create_visualizations(df, average_retention, industry_target)
     
-    # Generate visualizations
-    print("\nGenerating visualizations...")
-    analyzer.create_trend_visualization()
-    analyzer.create_performance_dashboard()
-    analyzer.create_interactive_plotly_chart()
+    # Generate insights
+    insights = generate_insights(df, average_retention, industry_target, gap_to_target)
     
-    # Generate insights report
-    insights = analyzer.generate_insights_report()
+    # Calculate business impact
+    lost_revenue = calculate_business_impact(average_retention, industry_target)
     
-    # Export results
-    analyzer.export_data_analysis()
-    
-    print("\n" + "="*60)
-    print("ANALYSIS COMPLETE")
-    print("="*60)
-    print("All visualizations and reports have been generated.")
-    print("Check the 'visualizations/' folder for charts and graphs.")
-    print("Review 'retention_analysis_results.xlsx' for detailed data export.")
-    print("\nKey Finding: Average retention rate is 71.33% vs 85% target")
-    print("Recommendation: Implement targeted retention campaigns immediately")
+    print("\n" + "=" * 50)
+    print("Analysis completed successfully!")
+    print("Check the 'visualizations' folder for charts and graphs.")
 
 if __name__ == "__main__":
-    # Create visualizations directory if it doesn't exist
-    import os
-    os.makedirs('visualizations', exist_ok=True)
-    
-    # Run the analysis
     main()
