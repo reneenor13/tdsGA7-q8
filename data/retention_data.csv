@@ -1,5 +1,5 @@
-Quarter,Year,Retention_Rate,Month_Number,Industry_Target,Performance_Gap
-Q1,2024,71.68,1,85.0,13.32
-Q2,2024,72.07,2,85.0,12.93
-Q3,2024,69.67,3,85.0,15.33
-Q4,2024,71.91,4,85.0,13.09
+Quarter,Retention_Rate
+Q1,71.68
+Q2,72.07
+Q3,69.67
+Q4,71.91
